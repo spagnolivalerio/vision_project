@@ -4,3 +4,4 @@ src/weights/
 src/diffusion_model/diff_data/
 src/diffusion_model/outputs/
 src/syn_dataset/
+src/__pycache__
