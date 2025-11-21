@@ -1,1 +1,3 @@
-# computer vision project, SPAGNOLI VALERIO 1973484
+# computer vision project
+## DENTAL X-RAY IMAGES GENERATION AND SEGMENTATION
+### Done by Spagnoli Valerio 1973484
