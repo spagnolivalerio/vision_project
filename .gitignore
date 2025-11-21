@@ -1,7 +1,9 @@
 data/
-src/trash/
-src/weights/
-src/diffusion_model/diff_data/
-src/diffusion_model/outputs/
-src/syn_dataset/
-src/__pycache__
+
+*.pt
+*.pth
+
+*.png
+
+__pycache__/
+**/__pycache__/
