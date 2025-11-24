@@ -10,9 +10,6 @@ from torchvision.transforms import InterpolationMode
 IMAGE_SIZE = 128
 
 
-TIME_STEPS = 300
-#TIME_STEPS = 600
-
 crop = transforms.Compose([
     transforms.ToTensor(),
     transforms.Resize(IMAGE_SIZE, interpolation=InterpolationMode.NEAREST),

@@ -21,7 +21,7 @@ class Diffusion(nn.Module):
             up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
         ).to(device)
 
-        # noise scheduler
+        # Nise scheduler
         self.betas = torch.linspace(beta_start, beta_end, timesteps, device=device)
         self.alphas = 1.0 - self.betas
         self.alpha_bars = torch.cumprod(self.alphas, dim=0)
