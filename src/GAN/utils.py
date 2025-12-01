@@ -2,14 +2,15 @@ import torch.autograd as autograd
 import torch
 import torchvision.transforms as transforms
 import numpy as np
-import os
 from PIL import Image, ImageDraw
 from torchvision.transforms import InterpolationMode
 
+IMAGE_SIZE = 128
+
 crop = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Resize(256, interpolation=InterpolationMode.NEAREST),
-    transforms.CenterCrop(256)
+    transforms.Resize(IMAGE_SIZE, interpolation=InterpolationMode.NEAREST),
+    transforms.CenterCrop(IMAGE_SIZE)
 ])
 
 crop_and_normalize = transforms.Compose([
@@ -24,10 +25,9 @@ rotate_right = transforms.RandomRotation(degrees=(45, 45))
 
 rotate_left = transforms.RandomRotation(degrees=(-45, -45))
 
+# Gradient penalty of PANO-WGAN
 def gradient_penalty(critic, real, fake, device="cuda"):
-    """
-    GP del modello PANO-WGAN
-    """
+
     batch_size, C, H, W = real.shape
     epsilon = torch.rand(batch_size, 1, 1, 1, device=device, requires_grad=True)
 
@@ -53,10 +53,9 @@ def gradient_penalty(critic, real, fake, device="cuda"):
 
     return gp 
 
+# Compute masks starting from vertexes of polygons
 def compute_masks(img, anns):
-    """
-    Calcola le maschere sulla base dei vertici dei poligoni deifniti nel json
-    """
+
     mask = Image.new("L", img.size, 0)
     draw = ImageDraw.Draw(mask)
     for ann in anns:
@@ -68,21 +67,5 @@ def compute_masks(img, anns):
 
     return mask
 
-def blank_mask(image_file, image_dir, mask_dir):
-
-    mask_file = "mask_" + image_file
-    save_path = os.path.join(mask_dir, mask_file)
-    image_path = os.path.join(image_dir, image_file)
-    
-    img = Image.open(image_path)
-    width, height = img.size
-
-    mask_array = np.zeros((height, width), dtype=np.uint8)
-    mask = Image.fromarray(mask_array, mode="L") 
-
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    mask.save(save_path)
-
-    return img #return the PIL image to save it into the directory
 
     

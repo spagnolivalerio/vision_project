@@ -1,10 +1,10 @@
 import os
 from glob import glob
 from PIL import Image
-import torch
+from torch.utils.data import Dataset
 from utils import crop_and_normalize
 
-class DentalDataset(torch.utils.data.Dataset):
+class DentalDataset(Dataset):
     def __init__(self, root_dir):
         self.paths = sorted(glob(os.path.join(root_dir, "*")))
         if len(self.paths) == 0:

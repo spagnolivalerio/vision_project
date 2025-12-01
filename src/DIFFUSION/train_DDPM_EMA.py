@@ -1,10 +1,9 @@
 import os
-import sys
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from dataset import DentalDataset
-from utils import IMAGE_SIZE
+from utils import IMAGE_SIZE, TIME_STEPS
 from models.diffusion import Diffusion
 
 class EMA:
@@ -55,16 +54,15 @@ class EMA:
             if param.requires_grad:
                 param.data = self.backup[name]
 
-DATA_PATH = "../../data/dentex/training_data/quadrant/xrays/"
+DATA_PATH = "../../data/train/xrasy"
 OUTPUT_DIR = "outputs/running"
 BATCH_SIZE = 16            
-TIME_STEPS = 1000
-TOTAL_STEPS = 30000
-LR = 2e-5
-SAVE_EVERY = 250
+TOTAL_STEPS = 100000
+LR = 8e-5
+SAVE_EVERY = 1000
 SHOW_EVERY = 100
 PRINT_EVERY = 1
-RESUME_CKPT = "checkpoints/DDPM/128_diffusion_step_9250_300_timesteps.pt"  
+RESUME_CKPT = ""  
 EMA_DECAY = 0.999         
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -114,7 +112,6 @@ if __name__ == "__main__":
     # Start training
     step = start_step
     diffusion.model.train()
-    optimizer.zero_grad()
 
     for epoch in range(999999):
         for i, imgs in enumerate(dataloader):
@@ -125,10 +122,10 @@ if __name__ == "__main__":
             t = torch.randint(0, TIME_STEPS, (imgs.shape[0],), device=DEVICE) 
 
             # Loss computing and backpropagation
+            optimizer.zero_grad()
             loss = diffusion.p_losses(imgs, t)
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
 
             # Step increment
             step += 1
@@ -148,6 +145,7 @@ if __name__ == "__main__":
                 sample = diffusion.sample(n_samples=1)
                 ema.restore()
                 diffusion.model.train()
+
                 # Sample normalization to visualize it
                 sample = (sample.clamp(-1, 1) + 1) / 2
 
@@ -159,7 +157,7 @@ if __name__ == "__main__":
 
             # Checkpoint save
             if step % SAVE_EVERY == 0:
-                ckpt_path = f"checkpoints/DDPM/{IMAGE_SIZE}_diffusion_step_{step}_{TIME_STEPS}_timesteps.pt"
+                ckpt_path = f"checkpoints/DDPM_EMA/v2/{IMAGE_SIZE}_diffusion_step_{step}_{TIME_STEPS}_timesteps.pt"
                 torch.save({
                     "model_state_dict": diffusion.model.state_dict(),
                     "ema": ema.shadow, 

@@ -1,5 +1,4 @@
 import os
-import sys
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
@@ -10,12 +9,12 @@ from models.diffusion import Diffusion
 DATA_PATH = "../../data/dentex/training_data/quadrant/xrays/"
 OUTPUT_DIR = "outputs/running"
 BATCH_SIZE = 16            
-TOTAL_STEPS = 30000
+TOTAL_STEPS = 50000
 LR = 1e-4
-SAVE_EVERY = 250
+SAVE_EVERY = 1000
 SHOW_EVERY = 100
 PRINT_EVERY = 1
-RESUME_CKPT = "checkpoints/DDPM/128_diffusion_step_9250_300_timesteps.pt"           
+RESUME_CKPT = ""           
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 dataset = DentalDataset(DATA_PATH)
@@ -54,7 +53,6 @@ print("Work in progress, trust the process ;)")
 # Start training
 step = start_step
 diffusion.model.train()
-optimizer.zero_grad()
 
 for epoch in range(999999):
     for i, imgs in enumerate(dataloader):
@@ -63,12 +61,13 @@ for epoch in range(999999):
         
         # Create a t array to contain timestep for each image in the batch
         t = torch.randint(0, TIME_STEPS, (imgs.shape[0],), device=DEVICE) 
-
+        
+        # Training step
+        optimizer.zero_grad()
         loss = diffusion.p_losses(imgs, t)
         loss.backward()
-
         optimizer.step()
-        optimizer.zero_grad()
+        
         step += 1
 
         if step % PRINT_EVERY == 0:
@@ -92,7 +91,7 @@ for epoch in range(999999):
 
         # Checkpoint save
         if step % SAVE_EVERY == 0:
-            ckpt_path = f"checkpoints/DDPM/{IMAGE_SIZE}_diffusion_step_{step}_{TIME_STEPS}_timesteps.pt"
+            ckpt_path = f"checkpoints/DDPM/1000_timesteps/{IMAGE_SIZE}_diffusion_step_{step}_{TIME_STEPS}_timesteps.pt"
             torch.save({
                 "model_state_dict": diffusion.model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),

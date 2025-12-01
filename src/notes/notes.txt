@@ -1,4 +1,0 @@
-Semplicemente la distribuzione congiunta mi aiuta ad accoppaire le due distribuzioni in modo da fare un mapping
-1:1 (ovvero non posso mappare più massa di quella che c'è).
-Poi, scegliere la dsitribuzione che spalma meglio questo accoppiamento aiuta a minimizzare il costo complessivo 
-per trasforamre questa quantità
