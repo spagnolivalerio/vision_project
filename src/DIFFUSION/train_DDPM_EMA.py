@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from dataset import DentalDataset
 from utils import IMAGE_SIZE, TIME_STEPS
-from models.diffusion import Diffusion
+from DIFFUSION.models.network import Diffusion
 
+# Reference
 class EMA:
     def __init__(self, model, decay):
         """
@@ -133,7 +134,7 @@ if __name__ == "__main__":
             # Ema weights update
             ema.update()
 
-            # Log print
+            # Logging
             if step % PRINT_EVERY == 0:
                 print(f"Step {step:05d} | Loss: {loss.item():.6f}")
 

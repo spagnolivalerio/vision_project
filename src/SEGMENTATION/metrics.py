@@ -1,75 +1,73 @@
-import torch
 import numpy as np
 
+# Avoid division by 0, stabilizing the division
 EPS = 1e-6
 
-
-# Utility: convert predictions to class indices
-def to_class(preds):
-    """
-    preds: logits from model, shape (B, C, H, W)
-    returns predicted class mask: (B, H, W)
-    """
+def logits_to_class(preds):
+    # preds shape: (B, C, H, W)
+    # Take highest value on dim=1 => C (highest probability)
     return preds.argmax(dim=1)
 
-
+# Multiclass version of the union over intersection
 def multiclass_iou(preds, target, num_classes):
-    preds = to_class(preds)
+    preds = logits_to_class(preds)
 
     ious = []
 
-    for cls in range(num_classes):
-        pred_inds = (preds == cls)
-        target_inds = (target == cls)
+    for c in range(num_classes):
+        pred_inds = (preds == c)
+        target_inds = (target == c)
 
         intersection = (pred_inds & target_inds).sum().item()
         union = (pred_inds | target_inds).sum().item()
 
         if union == 0:
-            ious.append(np.nan) 
+            ious.append(np.nan) # Numpy null value
         else:
             ious.append(intersection / (union + EPS))
 
+    # nanmean doesn't take care about nan values
     mean_iou = np.nanmean(ious)
-    return ious, mean_iou
+    return mean_iou
 
+# Multiclass version of dice score
 def multiclass_dice(preds, target, num_classes):
-    preds = to_class(preds)
+    preds = logits_to_class(preds)
 
     dice_scores = []
 
-    for cls in range(num_classes):
-        pred_inds = (preds == cls)
-        target_inds = (target == cls)
+    for c in range(num_classes):
+        current_pred = (preds == c)
+        current_target = (target == c)
 
-        tp = (pred_inds & target_inds).sum().item()
-        fp = (pred_inds & ~target_inds).sum().item()
-        fn = (~pred_inds & target_inds).sum().item()
+        tp = (current_pred & current_target).sum().item()
+        fp = (current_pred & ~current_target).sum().item()
+        fn = (~current_pred & current_target).sum().item()
 
-        denom = (2 * tp + fp + fn + EPS)
+        denom = (2 * tp + fp + fn)
 
         if denom == 0:
             dice_scores.append(np.nan)
         else:
-            dice_scores.append((2 * tp) / denom)
+            dice_scores.append((2 * tp) / (denom + EPS))
 
     mean_dice = np.nanmean(dice_scores)
-    return dice_scores, mean_dice
+    return mean_dice
 
-
+# Multiclass version of precision and recall
 def multiclass_precision_recall(preds, target, num_classes):
-    preds = to_class(preds)
+    preds = logits_to_class(preds)
 
     precisions = []
     recalls = []
 
-    for cls in range(num_classes):
-        pred_inds = (preds == cls)
-        target_inds = (target == cls)
+    for c in range(num_classes):
+        current_pred = (preds == c)
+        current_target = (target == c)
 
-        tp = (pred_inds & target_inds).sum().item()
-        fp = (pred_inds & ~target_inds).sum().item()
-        fn = (~pred_inds & target_inds).sum().item()
+        tp = (current_pred & current_target).sum().item()
+        fp = (current_pred & ~current_target).sum().item()
+        fn = (~current_pred & current_target).sum().item()
 
         if (tp + fp) == 0:
             precisions.append(np.nan)
@@ -83,8 +81,9 @@ def multiclass_precision_recall(preds, target, num_classes):
 
     return precisions, recalls
 
+# Accuracy
 def pixel_accuracy(preds, target):
-    preds = to_class(preds)
+    preds = logits_to_class(preds)
     correct = (preds == target).sum().item()
-    total = preds.numel()
-    return correct / (total + EPS)
+    total = preds.numel() # Computes the product of the dimension of the tensor
+    return correct / total

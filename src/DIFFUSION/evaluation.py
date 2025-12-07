@@ -1,7 +1,7 @@
 import os
 import torch
 import matplotlib.pyplot as plt
-from models.diffusion import Diffusion 
+from DIFFUSION.models.network import Diffusion 
 from utils import IMAGE_SIZE
 from utils import TIME_STEPS
 from train_DDPM_EMA import EMA, EMA_DECAY

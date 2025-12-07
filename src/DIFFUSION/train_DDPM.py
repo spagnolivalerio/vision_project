@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from dataset import DentalDataset
 from utils import IMAGE_SIZE, TIME_STEPS
-from models.diffusion import Diffusion
+from DIFFUSION.models.network import Diffusion
 
 DATA_PATH = "../../data/dentex/training_data/quadrant/xrays/"
 OUTPUT_DIR = "outputs/running"

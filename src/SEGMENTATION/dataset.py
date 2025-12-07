@@ -5,8 +5,7 @@ import numpy as np
 import torch
 import random
 
-from utils import crop_and_normalize, mask_crop, hflip, rotate_left, rotate_right
-
+from utils import crop_and_normalize, mask_crop
 
 class DentalDataset(Dataset):
     def __init__(self, imgs_dir, masks_dir, augment=True):
@@ -26,17 +25,23 @@ class DentalDataset(Dataset):
         mask = np.array(Image.open(self.masks_files[index]), dtype=np.uint8)
 
         if self.augment:
+
             if random.random() < 0.5:
-                img = hflip(img)
+
+                # Horizontal flip of the image (PIL img, numpy mask)
+                img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 mask = np.fliplr(mask)
 
-            if random.random() < 0.25:
-                img = rotate_left(img)
-                mask = np.rot90(mask, k=1)
+            if random.random() < 0.5:
+                angle = random.uniform(-10, 10)
 
-            if random.random() < 0.25:
-                img = rotate_right(img)
-                mask = np.rot90(mask, k=-1)
+                # Rotate image (BLINEAR is good, no discrete indexes)
+                img = img.rotate(angle, resample=Image.BILINEAR)
+
+                # rotate mask (NEAREST is good for discrete values)
+                mask_pil = Image.fromarray(mask)
+                mask_pil = mask_pil.rotate(angle, resample=Image.NEAREST)
+                mask = np.array(mask_pil)
 
         img = crop_and_normalize(img)   
 

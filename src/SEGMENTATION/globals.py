@@ -1,0 +1,5 @@
+IMAGE_SIZE = 128
+NUM_CLASSES = 33
+
+DATA_ROOT = "data"
+DEVICE = "cuda"

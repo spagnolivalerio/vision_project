@@ -21,7 +21,7 @@ class Diffusion(nn.Module):
             up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
         ).to(device)
 
-        # Nise scheduler
+        # Noise scheduler
         self.betas = torch.linspace(beta_start, beta_end, timesteps, device=device)
         self.alphas = 1.0 - self.betas
         self.alpha_bars = torch.cumprod(self.alphas, dim=0)
@@ -30,7 +30,7 @@ class Diffusion(nn.Module):
     def q_sample(self, x0, t, noise=None):
         if noise is None:
             noise = torch.randn_like(x0)
-        sqrt_alpha_bar = self.alpha_bars[t][:, None, None, None].sqrt() #Shape broadcast
+        sqrt_alpha_bar = self.alpha_bars[t][:, None, None, None].sqrt() # Broadcast shape
         sqrt_one_minus_alpha_bar = (1 - self.alpha_bars[t])[:, None, None, None].sqrt()
         return sqrt_alpha_bar * x0 + sqrt_one_minus_alpha_bar * noise, noise
 

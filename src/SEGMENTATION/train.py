@@ -5,24 +5,22 @@ from dataset import DentalDataset
 from metrics import multiclass_iou, multiclass_dice, multiclass_precision_recall, pixel_accuracy
 import os
 import numpy as np
-from PIL import Image
+from globals import DATA_ROOT, DEVICE, NUM_CLASSES
 
-DATA_ROOT       = "data"
 TRAIN_IMGS_DIR  = DATA_ROOT + "/training_set/xrays"
 TRAIN_MASKS_DIR = DATA_ROOT + "/training_set/masks"
 VAL_IMGS_DIR    = DATA_ROOT + "/validation_set/xrays"
 VAL_MASKS_DIR   = DATA_ROOT + "/validation_set/masks"
 
 BATCH_SIZE   = 10
-NUM_EPOCHS   = 1000
-NUM_CLASSES  = 33
-DEVICE       = "cuda"
+NUM_EPOCHS   = 500
 LR           = 1e-4
 SHOW_EVERY   = 10
 WEIGHTS_DIR  = "weights"
 
 os.makedirs(WEIGHTS_DIR, exist_ok=True)
 
+# Network configuration
 model = smp.Unet(
     encoder_name="mobilenet_v2",
     encoder_weights="imagenet",
@@ -31,15 +29,16 @@ model = smp.Unet(
 )
 model = model.to(DEVICE)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-5)
 criterion = torch.nn.CrossEntropyLoss()
 
 train_dataset = DentalDataset(TRAIN_IMGS_DIR, TRAIN_MASKS_DIR, augment=True)
 val_dataset   = DentalDataset(VAL_IMGS_DIR,   VAL_MASKS_DIR,   augment=False)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-val_loader   = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,  num_workers=4)
+val_loader   = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 
+# Start of the training
 print("Starting training...")
 for epoch in range(NUM_EPOCHS):
 
@@ -72,6 +71,7 @@ for epoch in range(NUM_EPOCHS):
     val_rec  = 0
     val_acc  = 0
 
+    # Evaluation process
     with torch.no_grad():
         for imgs, masks in val_loader:
             imgs  = imgs.to(DEVICE)
@@ -82,8 +82,8 @@ for epoch in range(NUM_EPOCHS):
 
             val_loss += loss.item()
 
-            _, miou = multiclass_iou(preds, masks, NUM_CLASSES)
-            _, mdice = multiclass_dice(preds, masks, NUM_CLASSES)
+            miou = multiclass_iou(preds, masks, NUM_CLASSES)
+            mdice = multiclass_dice(preds, masks, NUM_CLASSES)
             precs, recs = multiclass_precision_recall(preds, masks, NUM_CLASSES)
             acc = pixel_accuracy(preds, masks)
 
@@ -111,5 +111,5 @@ for epoch in range(NUM_EPOCHS):
         f"| PixelAcc: {val_acc:.4f}"
     )
 
-    torch.save(model.state_dict(), WEIGHTS_DIR + "/unet.pt")
+    torch.save(model.state_dict(), WEIGHTS_DIR + "/unet_non_legacy2.pt")
     print("Saved checkpoint.")

@@ -1,16 +1,10 @@
 import torchvision.transforms as transforms
 import numpy as np
-import os
 from PIL import Image, ImageDraw
 from torchvision.transforms import InterpolationMode
-
-IMAGE_SIZE = 128
-
-crop = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Resize(IMAGE_SIZE, interpolation=InterpolationMode.NEAREST),
-    transforms.CenterCrop(IMAGE_SIZE)
-])
+from globals import IMAGE_SIZE
+from colordict import *
+import random as rand
 
 mask_crop = transforms.Compose([
     transforms.Resize(IMAGE_SIZE, interpolation=InterpolationMode.NEAREST),
@@ -18,29 +12,32 @@ mask_crop = transforms.Compose([
 ])
 
 crop_and_normalize = transforms.Compose([
-    crop,
+    transforms.ToTensor(),
+    transforms.Resize(IMAGE_SIZE, interpolation=InterpolationMode.NEAREST),
+    transforms.CenterCrop(IMAGE_SIZE),
     transforms.Grayscale(num_output_channels=1),
     transforms.Normalize(mean=[0.5], std=[0.5])
 ])
 
-hflip = transforms.functional.hflip
+def class_to_color(classes): 
+    
+    palette = {}
+    colors_list = list(ColorDict().values())
+    rand.shuffle(colors_list)
+    for i, cls in enumerate(classes):  
+        palette[cls] = colors_list[i]
+    
+    return palette
 
-rotate_right = transforms.RandomRotation(degrees=(10, 10))
+def color_mask(mask, palette):
 
-rotate_left = transforms.RandomRotation(degrees=(-10, -10))
+    h, w = mask.shape
+    img = np.zeros((h, w, 3), dtype=np.uint8)
 
-def compute_masks(img, anns):
+    for cls, color in palette.items():
+        rgb = color[:3]
+        img[mask == cls] = rgb
 
-    mask = Image.new("L", img.size, 0)
-    draw = ImageDraw.Draw(mask)
-    for ann in anns:
-        for seg in ann["segmentation"]:
-            polygon = [(seg[i], seg[i+1]) for i in range(0, len(seg), 2)]
-            draw.polygon(polygon, outline=255, fill=255)
-        
-    mask = np.array(mask)
-
-    return mask
-
+    return img
 
     
