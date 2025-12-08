@@ -2,7 +2,7 @@ from diffusers import UNet2DModel
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import IMAGE_SIZE, TIME_STEPS
+from globals import IMAGE_SIZE, TIME_STEPS
 
 class Diffusion(nn.Module):
     def __init__(self, image_size=IMAGE_SIZE, timesteps=TIME_STEPS, beta_start=1e-4, beta_end=0.02, device="cuda"):
@@ -43,7 +43,7 @@ class Diffusion(nn.Module):
 
     # Reverse process
     @torch.no_grad()
-    def sample(self, n_samples=4):
+    def sample(self, n_samples):
         self.model.eval()
         x = torch.randn(n_samples, 1, self.image_size, self.image_size, device=self.device)
 
@@ -62,4 +62,51 @@ class Diffusion(nn.Module):
 
         return x
     
+class EMA:
+    def __init__(self, model, decay):
+        """
+        Initialize EMA class to manage exponential moving average of model parameters.
+        
+        Args:
+            model (torch.nn.Module): The model for which EMA will track parameters.
+            decay (float): Decay rate, typically a value close to 1, e.g., 0.999.
+        """
+        self.model = model
+        self.decay = decay
+        self.shadow = {}
+        self.backup = {}
+
+        # Store initial parameters
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                self.shadow[name] = param.data.clone()
+
+    @torch.no_grad()
+    def update(self):
+        """
+        Update shadow parameters with exponential decay.
+        """
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                new_average = (1.0 - self.decay) * param.data + self.decay * self.shadow[name]
+                self.shadow[name] = new_average.clone()
+
+    @torch.no_grad()
+    def apply_shadow(self):
+        """
+        Apply shadow (EMA) parameters to model.
+        """
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                self.backup[name] = param.data.clone()
+                param.data = self.shadow[name]
+
+    @torch.no_grad()
+    def restore(self):
+        """
+        Restore original model parameters from backup.
+        """
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                param.data = self.backup[name]
 

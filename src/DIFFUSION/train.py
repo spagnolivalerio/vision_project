@@ -3,72 +3,35 @@ import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from dataset import DentalDataset
-from utils import IMAGE_SIZE, TIME_STEPS
-from DIFFUSION.models.network import Diffusion
+from globals import IMAGE_SIZE, TIME_STEPS, BATCH_SIZE, DEVICE, DATA_PATH
+from network import Diffusion, EMA
 
-# Reference
-class EMA:
-    def __init__(self, model, decay):
-        """
-        Initialize EMA class to manage exponential moving average of model parameters.
-        
-        Args:
-            model (torch.nn.Module): The model for which EMA will track parameters.
-            decay (float): Decay rate, typically a value close to 1, e.g., 0.999.
-        """
-        self.model = model
-        self.decay = decay
-        self.shadow = {}
-        self.backup = {}
-
-        # Store initial parameters
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                self.shadow[name] = param.data.clone()
-
-    @torch.no_grad()
-    def update(self):
-        """
-        Update shadow parameters with exponential decay.
-        """
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                new_average = (1.0 - self.decay) * param.data + self.decay * self.shadow[name]
-                self.shadow[name] = new_average.clone()
-
-    @torch.no_grad()
-    def apply_shadow(self):
-        """
-        Apply shadow (EMA) parameters to model.
-        """
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                self.backup[name] = param.data.clone()
-                param.data = self.shadow[name]
-
-    @torch.no_grad()
-    def restore(self):
-        """
-        Restore original model parameters from backup.
-        """
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                param.data = self.backup[name]
-
-DATA_PATH = "../../data/train/xrasy"
 OUTPUT_DIR = "outputs/running"
-BATCH_SIZE = 16            
-TOTAL_STEPS = 100000
-LR = 8e-5
+TOTAL_STEPS_EMA = 100000
+TOTAL_STEPS_CLASSIC = 50000
+LR_EMA = 8e-5
+LR_CLASSIC = 1e-4
 SAVE_EVERY = 1000
 SHOW_EVERY = 100
 PRINT_EVERY = 1
 RESUME_CKPT = ""  
 EMA_DECAY = 0.999         
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-if __name__ == "__main__": 
-    
+if __name__ == "__main__":
+
+    use_ema = input("Select the modality: 1 for EMA DDPM - 0 for classical DDPM ").strip()
+    if use_ema == "1":
+        print("EMA DDPM choosen")
+        CHECKPOINT_DIR = "DDPM_EMA"
+        LR = LR_EMA
+        total_steps = TOTAL_STEPS_EMA
+    else:
+        use_ema = 0
+        print("Classic DDPM choosen")
+        CHECKPOINT_DIR = "DDPM"
+        LR = LR_CLASSIC
+        total_steps = TOTAL_STEPS_CLASSIC
+
     # Dataset and dataloader initialization
     dataset = DentalDataset(DATA_PATH)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2, drop_last=True)
@@ -78,10 +41,14 @@ if __name__ == "__main__":
     diffusion = Diffusion(image_size=IMAGE_SIZE, timesteps=TIME_STEPS, device=DEVICE)
     optimizer = torch.optim.Adam(diffusion.model.parameters(), lr=LR)
 
-    ema = EMA(diffusion.model, EMA_DECAY)
+    ema = None
+    if use_ema:
+        ema = EMA(diffusion.model, EMA_DECAY)
 
+    # Create the checkpoints dir
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    os.makedirs("checkpoints", exist_ok=True)
+    ckpt_base = os.path.join("checkpoints", CHECKPOINT_DIR, "v2")
+    os.makedirs(ckpt_base, exist_ok=True)
 
     # Resume checkpoint (if needed)
     start_step = 0
@@ -97,8 +64,8 @@ if __name__ == "__main__":
         if "optimizer_state_dict" in ckpt:
             optimizer.load_state_dict(ckpt["optimizer_state_dict"])
             print("Optimizer loaded.")
-        
-        if "ema" in ckpt:
+
+        if use_ema and "ema" in ckpt:
             ema.shadow = ckpt["ema"]
             print("EMA loaded.")
 
@@ -132,7 +99,8 @@ if __name__ == "__main__":
             step += 1
 
             # Ema weights update
-            ema.update()
+            if use_ema:
+                ema.update()
 
             # Logging
             if step % PRINT_EVERY == 0:
@@ -142,9 +110,11 @@ if __name__ == "__main__":
             if step % SHOW_EVERY == 0:
 
                 diffusion.model.eval()
-                ema.apply_shadow()
+                if use_ema:
+                    ema.apply_shadow()
                 sample = diffusion.sample(n_samples=1)
-                ema.restore()
+                if use_ema:
+                    ema.restore()
                 diffusion.model.train()
 
                 # Sample normalization to visualize it
@@ -158,16 +128,20 @@ if __name__ == "__main__":
 
             # Checkpoint save
             if step % SAVE_EVERY == 0:
-                ckpt_path = f"checkpoints/DDPM_EMA/v2/{IMAGE_SIZE}_diffusion_step_{step}_{TIME_STEPS}_timesteps.pt"
-                torch.save({
+                ckpt_path = os.path.join(
+                    ckpt_base, f"{IMAGE_SIZE}_diffusion_step_{step}_{TIME_STEPS}_timesteps.pt"
+                )
+                ckpt = {
                     "model_state_dict": diffusion.model.state_dict(),
-                    "ema": ema.shadow, 
                     "optimizer_state_dict": optimizer.state_dict(),
                     "step": step
-                }, ckpt_path)
+                }
+                if use_ema and ema is not None:
+                    ckpt["ema"] = ema.shadow
+                torch.save(ckpt, ckpt_path)
                 print(f"Saved checkpoint: {ckpt_path}")
 
         # Stop condition
-        if step >= TOTAL_STEPS:
-            print(f"Training complete ({TOTAL_STEPS} steps reached)")
+        if step >= total_steps:
+            print(f"Training complete ({total_steps} steps reached)")
             break

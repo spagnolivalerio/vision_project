@@ -1,16 +1,16 @@
 import os
 import torch
 import matplotlib.pyplot as plt
-from DIFFUSION.models.network import Diffusion 
+from DIFFUSION.network import Diffusion 
 from utils import IMAGE_SIZE
 from utils import TIME_STEPS
-from train_DDPM_EMA import EMA, EMA_DECAY
+from DIFFUSION.train import EMA, EMA_DECAY
 
 N_SAMPLE = 1
 CYCLES = 20
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-CHECKPOINT_PATH = f"checkpoints/DDPM_EMA/v1/128_diffusion_step_27000_450_timesteps.pt"
-OUTPUT_DIR = f"outputs/samples_{N_SAMPLE}"
+CHECKPOINT_PATH = f"checkpoints/DDPM_EMA/v1/128_diffusion_step_35000_450_timesteps.pt"
+OUTPUT_DIR = f"data/outputs/samples_{N_SAMPLE}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 diffusion = Diffusion(
@@ -38,8 +38,7 @@ ema.apply_shadow()
 for c in range(CYCLES):
 
     with torch.no_grad():
-        samples = diffusion.sample(n_samples=50)
-
+        samples = diffusion.sample(n_samples=10)
 
     samples = (samples.clamp(-1, 1) + 1) / 2
 

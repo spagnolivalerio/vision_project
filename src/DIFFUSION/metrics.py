@@ -4,37 +4,28 @@ from PIL import Image
 import torch
 import torchvision.transforms as transforms
 from cleanfid import fid
-from utils import crop_and_normalize 
+from utils import crop_and_resize
 
-CONVERT_IMAGES = True
-REAL_DIR = "FID_data/true"
-FAKE_DIR = "FID_data/fake"
+def compute_clean_FID(REAL_DIR, FAKE_DIR, convert_images=False):
 
-inv_normalize = transforms.Compose([
-    transforms.Normalize(mean=[-0.5/0.5], std=[1/0.5])
-])
+    # If the REAL DIR has native images
+    if convert_images:
 
-def normalize(img_paths):
+        files = sorted(glob(os.path.join(REAL_DIR, "*")))
 
-    for path in img_paths:
-        img = Image.open(path).convert("L")        
-        tensor = crop_and_normalize(img)      
+        for file in files:
+            # Open the image in grayscale
+            img = Image.open(file).convert("L")
 
-        # invert normalization
-        t = inv_normalize(tensor)
-        t = torch.clamp(t, 0, 1).squeeze(0)
+            # Convert the image in [0, 1] domain and resize it
+            img = crop_and_resize(img)
+            img = torch.clamp(img, 0, 1).squeeze(0)
 
-        out = transforms.ToPILImage()(t)
+            # Trasform to PIL format to save it
+            img = transforms.ToPILImage()(img)
+            img.save(file)
 
-        out.save(path)
-
-if __name__ == "__main__":
-
-    if CONVERT_IMAGES:
-        img_paths = sorted(glob(os.path.join(REAL_DIR, "*")))
-        print(f"Found {len(img_paths)} images")
-        normalize(img_paths)
-    
-    # Compute FID
+    # Compute the FID
     fid_value = fid.compute_fid(REAL_DIR, FAKE_DIR, mode="clean")
-    print(f"FID VALUE: {fid_value:.6f}")
+    print(f"FID VALUE: {fid_value:.4f}")
+    

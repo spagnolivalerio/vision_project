@@ -1,19 +1,18 @@
-import segmentation_models_pytorch as smp
+import os
 import torch
+import segmentation_models_pytorch as smp
 from torch.utils.data import DataLoader
 from dataset import DentalDataset
 from metrics import multiclass_iou, multiclass_dice, multiclass_precision_recall, pixel_accuracy
-import os
 import numpy as np
-from globals import DATA_ROOT, DEVICE, NUM_CLASSES
+from globals import DATA_ROOT, DEVICE, NUM_CLASSES, BATCH_SIZE
 
 TRAIN_IMGS_DIR  = DATA_ROOT + "/training_set/xrays"
 TRAIN_MASKS_DIR = DATA_ROOT + "/training_set/masks"
 VAL_IMGS_DIR    = DATA_ROOT + "/validation_set/xrays"
 VAL_MASKS_DIR   = DATA_ROOT + "/validation_set/masks"
 
-BATCH_SIZE   = 10
-NUM_EPOCHS   = 500
+NUM_EPOCHS   = 100
 LR           = 1e-4
 SHOW_EVERY   = 10
 WEIGHTS_DIR  = "weights"
@@ -22,16 +21,21 @@ os.makedirs(WEIGHTS_DIR, exist_ok=True)
 
 # Network configuration
 model = smp.Unet(
-    encoder_name="mobilenet_v2",
+    encoder_name="resnet34",
     encoder_weights="imagenet",
     in_channels=1,
     classes=NUM_CLASSES,
-)
-model = model.to(DEVICE)
+).to(DEVICE)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-5)
-criterion = torch.nn.CrossEntropyLoss()
+# Criterion definition
+ce_loss = torch.nn.CrossEntropyLoss()
 
+def criterion(pred, target):
+    return ce_loss(pred, target)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+
+# Datasets loading
 train_dataset = DentalDataset(TRAIN_IMGS_DIR, TRAIN_MASKS_DIR, augment=True)
 val_dataset   = DentalDataset(VAL_IMGS_DIR,   VAL_MASKS_DIR,   augment=False)
 
@@ -111,5 +115,5 @@ for epoch in range(NUM_EPOCHS):
         f"| PixelAcc: {val_acc:.4f}"
     )
 
-    torch.save(model.state_dict(), WEIGHTS_DIR + "/unet_non_legacy2.pt")
+    torch.save(model.state_dict(), WEIGHTS_DIR + "/unet_legacy.pt")
     print("Saved checkpoint.")

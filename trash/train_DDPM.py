@@ -3,22 +3,20 @@ import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from dataset import DentalDataset
-from utils import IMAGE_SIZE, TIME_STEPS
-from DIFFUSION.models.network import Diffusion
+from globals import IMAGE_SIZE, TIME_STEPS, BATCH_SIZE, DEVICE, DATA_PATH
+from network import Diffusion
 
 DATA_PATH = "../../data/dentex/training_data/quadrant/xrays/"
 OUTPUT_DIR = "outputs/running"
-BATCH_SIZE = 16            
 TOTAL_STEPS = 50000
 LR = 1e-4
 SAVE_EVERY = 1000
 SHOW_EVERY = 100
 PRINT_EVERY = 1
 RESUME_CKPT = ""           
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 dataset = DentalDataset(DATA_PATH)
-dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2, drop_last=True)
+dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
 print(f"Dataset loaded: {DATA_PATH}")
 
 diffusion = Diffusion(image_size=IMAGE_SIZE, timesteps=TIME_STEPS, device=DEVICE)

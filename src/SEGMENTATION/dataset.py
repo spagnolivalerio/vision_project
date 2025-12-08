@@ -33,7 +33,7 @@ class DentalDataset(Dataset):
                 mask = np.fliplr(mask)
 
             if random.random() < 0.5:
-                angle = random.uniform(-10, 10)
+                angle = random.uniform(-90, 90)
 
                 # Rotate image (BLINEAR is good, no discrete indexes)
                 img = img.rotate(angle, resample=Image.BILINEAR)
